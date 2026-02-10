@@ -1,0 +1,35 @@
+{
+  "telescope": {
+    "pixel_scale_arcsec_per_px": 0.27957579,
+    "aperture_multiplier": 3.0
+  },
+  "camera": {
+    "read_modes": {
+      "8 MHz": 14,
+      "1 MHz": 10
+    },
+    "dark_current_e_per_s": 0.0357
+  },
+  "sky": {
+    "brightness_e_per_s": {
+      "B": 80,
+      "V": 73,
+      "R": 60,
+      "I": 50
+    }
+  },
+  "photometry": {
+    "zero_points": {
+      "B": 18,
+      "V": 20,
+      "R": 22,
+      "I": 24
+    },
+    "extinction_coefficients": {
+      "B": [0.12, 0.14, 0.16, 0.18, 0.20],
+      "V": [0.10, 0.12, 0.14, 0.16, 0.18],
+      "R": [0.09, 0.10, 0.12, 0.13, 0.15],
+      "I": [0.07, 0.09, 0.11, 0.12, 0.14]
+    }
+  }
+}

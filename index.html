@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Exposure Time Calculator</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <main class="container">
+      <h1>Exposure Time Calculator</h1>
+
+      <form id="etc-form">
+        <fieldset class="mode-select">
+          <legend>Calculation mode</legend>
+          <label
+            ><input type="radio" name="calc_mode" value="exposure" checked />
+            Calculate exposure time</label
+          >
+          <label
+            ><input type="radio" name="calc_mode" value="snr" /> Calculate
+            SNR</label
+          >
+        </fieldset>
+
+        <section class="form-section">
+          <h3>Target</h3>
+          <div class="grid">
+            <label
+              >Magnitude
+              <input type="number" id="mag" step="0.01" value="14" />
+            </label>
+
+            <label id="label-snr-or-time"
+              ><span id="label-snr-or-time-text">Target SNR</span>
+              <input type="number" id="snr" step="0.1" value="10" />
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h3>Atmosphere</h3>
+          <div class="grid">
+            <label
+              >Airmass
+              <input type="number" id="airmass" step="0.01" value="1.5" />
+            </label>
+
+            <label
+              >Air quality
+              <select id="air_quality">
+                <option value="1">1 - Excellent</option>
+                <option value="2">2 - Good</option>
+                <option value="3" selected>3 - Fair</option>
+                <option value="4">4 - Poor</option>
+                <option value="5">5 - Very Bad</option>
+              </select>
+            </label>
+
+            <label
+              >Seeing (arcsec)
+              <input type="number" id="seeing" step="0.01" value="2.0" />
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h3>Camera</h3>
+          <div class="grid">
+            <label
+              >Binning
+              <select id="binning">
+                <option value="1">1x1</option>
+                <option value="2" selected>2x2</option>
+                <option value="3">3x3</option>
+                <option value="4">4x4</option>
+              </select>
+            </label>
+
+            <label
+              >Read mode
+              <select id="read_mode">
+                <option>8 MHz</option>
+                <option>1 MHz</option>
+              </select>
+            </label>
+
+            <label
+              >Filter
+              <select id="used_filter">
+                <option>B</option>
+                <option selected>V</option>
+                <option>R</option>
+                <option>I</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <div class="buttons">
+          <button type="button" id="calc-btn">Calculate exposure time</button>
+        </div>
+      </form>
+
+      <section id="results" class="results">
+        <h2>Results</h2>
+        <div id="result-line1">—</div>
+        <div id="result-line2">—</div>
+        <div id="debug" class="debug"></div>
+        <div
+          id="chart-container"
+          style="position: relative; height: 400px; margin-top: 20px"
+        >
+          <canvas id="snr-chart"></canvas>
+        </div>
+      </section>
+      <footer>
+        <small
+          >Values are currently mock/data-sheet based. This is a JavaScript port
+          of the Python ETC.</small
+        >
+      </footer>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
