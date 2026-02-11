@@ -8,7 +8,9 @@
       "8 MHz": 14,
       "1 MHz": 10
     },
-    "dark_current_e_per_s": 0.0357
+    "dark_current_e_per_s": 0.0357,
+    "gain_e_per_adu": 1.56,
+    "saturation_adu": 65535
   },
   "sky": {
     "brightness_e_per_s": {

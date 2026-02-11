@@ -243,6 +243,62 @@
     });
   }
 
+  function updateStats(
+    expTime,
+    R_star,
+    R_sky,
+    R_dark,
+    n_pix,
+    seeing,
+    binning,
+    mag,
+    used_filter,
+    calculatedSNR = null,
+  ) {
+    // Constants
+    const gain = config.camera.gain_e_per_adu;
+    const saturation = config.camera.saturation_adu;
+    const pixelScale = config.telescope.pixel_scale_arcsec_per_px;
+
+    // Sigma in binned pixels: FWHM / 2.3548 / binning
+    const sigmaPx = seeing / pixelScale / 2.3548 / binning;
+
+    // Signal in reference area
+    const signalE = R_star * expTime;
+    const signalAdu = signalE / gain;
+
+    // Sky background per pixel
+    const skyEPx = R_sky * expTime;
+    const skyAduPx = skyEPx / gain;
+
+    // Peak pixel value (Gaussian PSF)
+    const peakStarE = signalE / (2 * Math.PI * sigmaPx * sigmaPx);
+    const peakTotalE = peakStarE + skyEPx + R_dark * expTime;
+    const peakTotalAdu = peakTotalE / gain;
+
+    // FWHM Sampling
+    const fwhmPix = seeing / (pixelScale * binning);
+
+    // Saturation percentage
+    const saturationPct = (peakTotalAdu / saturation) * 100;
+
+    // Update display with proper formatting - matching HTML structure
+    $("stat-brightness").textContent = `${mag.toFixed(2)}`;
+    $("stat-filter").textContent = used_filter;
+    $("stat-time").textContent = `${expTime.toFixed(2)}`;
+    
+    // Use calculated SNR if provided (SNR mode), otherwise use input value (exposure mode)
+    const displaySNR = calculatedSNR !== null ? calculatedSNR : parseFloat($("snr").value);
+    $("stat-snr").textContent = `${displaySNR.toFixed(2)}`;
+    
+    $("stat-peak-e").textContent = `${peakTotalE.toFixed(2)}`;
+    $("stat-saturation").textContent = `${saturationPct.toFixed(2)}`;
+    $("stat-fwhm").textContent = `${fwhmPix.toFixed(2)}`;
+    $("stat-refarea").textContent = `${n_pix.toFixed(2)}`;
+    $("stat-signal-e").textContent = `${signalE.toFixed(2)}`;
+    $("stat-sky-e").textContent = `${skyEPx.toFixed(2)}`;
+  }
+
   function updateMode() {
     const mode = document.querySelector(
       'input[name="calc_mode"]:checked',
@@ -255,12 +311,12 @@
       labelText.textContent = "Target SNR";
       input.placeholder = "10";
       input.value = "10";
-      btn.textContent = "Calculate exposure time";
+      btn.textContent = "Calculate";
     } else {
       labelText.textContent = "Exposure time (s)";
       input.placeholder = "20";
       input.value = "20";
-      btn.textContent = "Calculate SNR";
+      btn.textContent = "Calculate";
     }
   }
 
@@ -273,23 +329,22 @@
     const snrVal = parseFloat($("snr").value);
 
     if (mode === "exposure") {
-      const line1 = $("result-line1");
-      const line2 = $("result-line2");
-      if (!Number.isFinite(out.t)) {
-        line1.textContent = "Exposure time: No valid solution (check inputs)";
-        line2.textContent = `SNR: ${snrVal}`;
-        updateChart(
+      if (Number.isFinite(out.t)) {
+        const mag = parseFloat($("mag").value);
+        const seeing = parseFloat($("seeing").value);
+        const binning = parseInt($("binning").value);
+        const used_filter = $("used_filter").value;
+        updateStats(
+          out.t,
           out.R_star,
           out.R_sky,
           config.camera.dark_current_e_per_s,
           out.n_pix,
-          out.N_readout,
-          20,
-          5,
+          seeing,
+          binning,
+          mag,
+          used_filter,
         );
-      } else {
-        line1.textContent = `Exposure time: ${out.t.toFixed(3)} s`;
-        line2.textContent = `SNR: ${snrVal}`;
         updateChart(
           out.R_star,
           out.R_sky,
@@ -299,25 +354,27 @@
           out.t,
           snrVal,
         );
+      } else {
+        console.error("No valid solution for exposure time");
       }
     } else {
-      const line1 = $("result-line1");
-      const line2 = $("result-line2");
-      if (!Number.isFinite(out.snr_calc)) {
-        line1.textContent = `Exposure time: ${snrVal} s`;
-        line2.textContent = "SNR: invalid";
-        updateChart(
+      if (Number.isFinite(out.snr_calc)) {
+        const mag = parseFloat($("mag").value);
+        const seeing = parseFloat($("seeing").value);
+        const binning = parseInt($("binning").value);
+        const used_filter = $("used_filter").value;
+        updateStats(
+          snrVal,
           out.R_star,
           out.R_sky,
           config.camera.dark_current_e_per_s,
           out.n_pix,
-          out.N_readout,
-          snrVal,
-          5,
+          seeing,
+          binning,
+          mag,
+          used_filter,
+          out.snr_calc,
         );
-      } else {
-        line1.textContent = `Exposure time: ${snrVal} s`;
-        line2.textContent = `SNR: ${out.snr_calc.toFixed(3)}`;
         updateChart(
           out.R_star,
           out.R_sky,
@@ -327,10 +384,10 @@
           snrVal,
           out.snr_calc,
         );
+      } else {
+        console.error("No valid SNR calculation");
       }
     }
-    $("debug").textContent =
-      `n_pix=${out.n_pix.toFixed(2)}  R_star=${out.R_star.toExponential(3)}  R_sky=${out.R_sky}  N_readout=${out.N_readout}`;
   }
 
   window.addEventListener("DOMContentLoaded", async () => {

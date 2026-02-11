@@ -19,9 +19,8 @@
             Calculate exposure time</label
           >
           <label
-            ><input type="radio" name="calc_mode" value="snr" /> Calculate
-            SNR</label
-          >
+            ><input type="radio" name="calc_mode" value="snr" />Calculate SNR
+          </label>
         </fieldset>
 
         <section class="form-section">
@@ -40,11 +39,11 @@
         </section>
 
         <section class="form-section">
-          <h3>Atmosphere</h3>
+          <h3>Sky Conditions</h3>
           <div class="grid">
             <label
               >Airmass
-              <input type="number" id="airmass" step="0.01" value="1.5" />
+              <input type="number" id="airmass" step="0.01" value="1.0" />
             </label>
 
             <label
@@ -52,7 +51,7 @@
               <select id="air_quality">
                 <option value="1">1 - Excellent</option>
                 <option value="2">2 - Good</option>
-                <option value="3" selected>3 - Fair</option>
+                <option value="3" selected>3 - Average</option>
                 <option value="4">4 - Poor</option>
                 <option value="5">5 - Very Bad</option>
               </select>
@@ -99,15 +98,65 @@
         </section>
 
         <div class="buttons">
-          <button type="button" id="calc-btn">Calculate exposure time</button>
+          <button type="button" id="calc-btn">Calculate</button>
         </div>
       </form>
 
       <section id="results" class="results">
         <h2>Results</h2>
-        <div id="result-line1">—</div>
-        <div id="result-line2">—</div>
-        <div id="debug" class="debug"></div>
+        <div id="stats-container" class="stats-table">
+          <div class="stat-row">
+            <span class="stat-label">Brightness</span>
+            <span id="stat-brightness" class="stat-value">—</span>
+            <span class="stat-unit">mag</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Filter</span>
+            <span id="stat-filter" class="stat-value">—</span>
+            <span class="stat-unit"></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Exposure time</span>
+            <span id="stat-time" class="stat-value">—</span>
+            <span class="stat-unit">s</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">SNR</span>
+            <span id="stat-snr" class="stat-value">—</span>
+            <span class="stat-unit"></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Peak pixel value</span>
+            <span id="stat-peak-e" class="stat-value">—</span>
+            <span class="stat-unit">e-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Saturation</span>
+            <span id="stat-saturation" class="stat-value">—</span>
+            <span class="stat-unit">%</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">FWHM sampling</span>
+            <span id="stat-fwhm" class="stat-value">—</span>
+            <span class="stat-unit">pixel</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Reference area</span>
+            <span id="stat-refarea" class="stat-value">—</span>
+            <span class="stat-unit">pixel</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Signal in ref. area</span>
+            <span id="stat-signal-e" class="stat-value">—</span>
+            <span class="stat-unit">e-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Sky background</span>
+            <span id="stat-sky-e" class="stat-value">—</span>
+            <span class="stat-unit">e-/pixel</span>
+          </div>
+        </div>
+
         <div
           id="chart-container"
           style="position: relative; height: 400px; margin-top: 20px"
