@@ -29,6 +29,26 @@ body {
   max-width: 880px;
   margin: 36px auto;
   padding: 24px;
+  .tab-buttons {
+    display: inline-flex;
+    gap: 8px;
+  }
+  .tab-button {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid rgba(255,255,255,0.04);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .tab-button.active {
+    background: var(--accent);
+    color: white;
+    border-color: rgba(79,70,229,0.9);
+  }
+  .tab-content {
+    margin-top: 8px;
+  }
   background: var(--surface);
   border-radius: 10px;
   box-shadow: 0 6px 30px rgba(2, 6, 23, 0.6);

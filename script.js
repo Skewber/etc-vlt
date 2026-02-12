@@ -1,7 +1,8 @@
 // Exposure Time Calculator - JavaScript port of the notebook
 (function () {
   let config = null;
-  let chart = null;
+  let chartExposure = null;
+  let chartMag = null;
 
   function $(id) {
     return document.getElementById(id);
@@ -104,7 +105,7 @@
     );
   }
 
-  function updateChart(
+  function updateExposureChart(
     R_star,
     R_sky,
     R_dark,
@@ -113,6 +114,7 @@
     refTime,
     refSNR,
   ) {
+    console.debug("updateExposureChart called", { refTime, refSNR });
     // Generate exposure time range
     const minTime = Math.max(0.1, refTime * 0.7);
     const maxTime = refTime * 1.5;
@@ -129,11 +131,13 @@
       );
     }
 
-    const ctx = $("snr-chart").getContext("2d");
-
-    if (chart) {
-      chart.destroy();
+    const canvas = $("snr-chart-tab");
+    if (!canvas) {
+      console.error("snr-chart-tab canvas not found");
+      return;
     }
+    const ctx = canvas.getContext("2d");
+    if (chartExposure) chartExposure.destroy();
 
     const minSNR = Math.min(...snrVals);
     const maxSNR = Math.max(...snrVals);
@@ -184,63 +188,223 @@
       },
     };
 
-    chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: expoVals,
-        datasets: [
-          {
-            label: "SNR",
-            data: snrVals,
-            borderColor: "rgba(79, 70, 229, 1)",
-            backgroundColor: "rgba(79, 70, 229, 0.1)",
-            tension: 0.3,
-            fill: true,
-            pointRadius: 0,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            labels: {
-              color: "rgba(230, 238, 248, 0.8)",
-              font: { size: 12 },
+    try {
+      chartExposure = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: expoVals,
+          datasets: [
+            {
+              label: "SNR",
+              data: snrVals,
+              borderColor: "rgba(79, 70, 229, 1)",
+              backgroundColor: "rgba(79, 70, 229, 0.1)",
+              tension: 0.3,
+              fill: true,
+              pointRadius: 0,
             },
-          },
-          referencePoint: {}, // Enable the custom plugin
+          ],
         },
-        scales: {
-          x: {
-            type: "linear",
-            title: {
-              display: true,
-              text: "Exposure time (s)",
-              color: "rgba(230, 238, 248, 0.8)",
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: "rgba(230, 238, 248, 0.8)",
+                font: { size: 12 },
+              },
             },
-            grid: { color: "rgba(255, 255, 255, 0.05)" },
-            ticks: { color: "rgba(230, 238, 248, 0.8)" },
-            min: minTime,
-            max: maxTime,
+            referencePoint: {}, // Enable the custom plugin
           },
-          y: {
-            title: {
-              display: true,
-              text: "SNR",
-              color: "rgba(230, 238, 248, 0.8)",
+          scales: {
+            x: {
+              type: "linear",
+              title: {
+                display: true,
+                text: "Exposure time (s)",
+                color: "rgba(230, 238, 248, 0.8)",
+              },
+              grid: { color: "rgba(255, 255, 255, 0.05)" },
+              ticks: { color: "rgba(230, 238, 248, 0.8)" },
+              min: minTime,
+              max: maxTime,
             },
-            grid: { color: "rgba(255, 255, 255, 0.05)" },
-            ticks: { color: "rgba(230, 238, 248, 0.8)" },
-            beginAtZero: false,
-            min: minSNR * 0.95,
-            max: maxSNR * 1.05,
+            y: {
+              title: {
+                display: true,
+                text: "SNR",
+                color: "rgba(230, 238, 248, 0.8)",
+              },
+              grid: { color: "rgba(255, 255, 255, 0.05)" },
+              ticks: { color: "rgba(230, 238, 248, 0.8)" },
+              beginAtZero: false,
+              min: minSNR * 0.95,
+              max: maxSNR * 1.05,
+            },
           },
         },
-      },
-      plugins: [referencePointPlugin],
+        plugins: [referencePointPlugin],
+      });
+    } catch (err) {
+      console.error("Error creating exposure chart:", err);
+    }
+  }
+
+  // Magnitude vs SNR chart
+  function updateMagChart(
+    expTime,
+    targetMag,
+    seeing,
+    binning,
+    airmass,
+    air_quality,
+    read_mode,
+    used_filter,
+    N_readout,
+  ) {
+    // magnitude range: targetMag +/- 3
+    const mags = [];
+    const step = 0.05;
+    const minMag = targetMag - 2;
+    const maxMag = targetMag + 2;
+    for (let m = minMag; m <= maxMag + 1e-9; m += step)
+      mags.push(parseFloat(m.toFixed(2)));
+
+    const k_array =
+      config.photometry.extinction_coefficients[used_filter] ||
+      config.photometry.extinction_coefficients.V;
+    const k = k_array[Math.max(0, Math.min(4, air_quality - 1))];
+    const ZP = config.photometry.zero_points[used_filter];
+
+    const n_pix = getNpix(seeing, binning);
+    const R_dark = config.camera.dark_current_e_per_s;
+    const R_sky =
+      config.sky.brightness_e_per_s[used_filter] ||
+      config.sky.brightness_e_per_s.V;
+
+    const snrVals = mags.map((magv) => {
+      const R_star_v = Math.pow(10, 0.4 * (ZP - (magv + k * airmass)));
+      return calculateSNRForTime(
+        expTime,
+        R_star_v,
+        R_sky,
+        R_dark,
+        n_pix,
+        N_readout,
+      );
     });
+
+    // SNR at the target magnitude for the crosshair
+    const R_star_target = Math.pow(10, 0.4 * (ZP - (targetMag + k * airmass)));
+    const snrAtTarget = calculateSNRForTime(
+      expTime,
+      R_star_target,
+      R_sky,
+      R_dark,
+      n_pix,
+      N_readout,
+    );
+
+    const dataPoints = mags.map((m, i) => ({ x: m, y: snrVals[i] }));
+
+    console.debug("updateMagChart called", { expTime, used_filter });
+    const canvas = $("mag-chart");
+    if (!canvas) {
+      console.error("mag-chart canvas not found");
+      return;
+    }
+    const ctx = canvas.getContext("2d");
+    if (chartMag) chartMag.destroy();
+
+    // plugin to draw reference point (target magnitude)
+    const magReferencePlugin = {
+      id: "magReference",
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        const xPixel = xScale.getPixelForValue(targetMag);
+        const yPixel = yScale.getPixelForValue(snrAtTarget);
+        const chartBottom = chart.chartArea.bottom;
+        const chartLeft = chart.chartArea.left;
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(239, 68, 68, 0.6)";
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(xPixel, yPixel);
+        ctx.lineTo(xPixel, chartBottom);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(chartLeft, yPixel);
+        ctx.lineTo(xPixel, yPixel);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = "rgba(239,68,68,1)";
+        ctx.beginPath();
+        ctx.arc(xPixel, yPixel, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.restore();
+      },
+    };
+
+    try {
+      chartMag = new Chart(ctx, {
+        type: "line",
+        data: {
+          datasets: [
+            {
+              label: "SNR",
+              data: dataPoints,
+              parsing: false,
+              borderColor: "rgba(16, 185, 129, 1)",
+              backgroundColor: "rgba(16, 185, 129, 0.08)",
+              tension: 0.2,
+              fill: true,
+              pointRadius: 0,
+              showLine: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: "rgba(230, 238, 248, 0.8)" } },
+          },
+          scales: {
+            x: {
+              type: "linear",
+              position: "bottom",
+              reverse: false,
+              title: {
+                display: true,
+                text: "Magnitude",
+                color: "rgba(230,238,248,0.8)",
+              },
+              ticks: { color: "rgba(230,238,248,0.8)" },
+              min: Math.min(...mags),
+              max: Math.max(...mags),
+            },
+            y: {
+              title: {
+                display: true,
+                text: "SNR",
+                color: "rgba(230,238,248,0.8)",
+              },
+              ticks: { color: "rgba(230,238,248,0.8)" },
+            },
+          },
+        },
+        plugins: [magReferencePlugin],
+      });
+    } catch (err) {
+      console.error("Error creating mag chart:", err);
+    }
   }
 
   function updateStats(
@@ -286,11 +450,21 @@
     $("stat-brightness").textContent = `${mag.toFixed(2)}`;
     $("stat-filter").textContent = used_filter;
     $("stat-time").textContent = `${expTime.toFixed(2)}`;
-    
+
     // Use calculated SNR if provided (SNR mode), otherwise use input value (exposure mode)
-    const displaySNR = calculatedSNR !== null ? calculatedSNR : parseFloat($("snr").value);
+    const displaySNR =
+      calculatedSNR !== null ? calculatedSNR : parseFloat($("snr").value);
     $("stat-snr").textContent = `${displaySNR.toFixed(2)}`;
-    
+
+    // store raw electron values on the elements so we can toggle units without recomputing
+    const elPeak = $("stat-peak-e");
+    const elSignal = $("stat-signal-e");
+    const elSky = $("stat-sky-e");
+    if (elPeak) elPeak.dataset.electrons = peakTotalE;
+    if (elSignal) elSignal.dataset.electrons = signalE;
+    if (elSky) elSky.dataset.electrons = skyEPx;
+
+    // initial display (will be adjusted by unit toggle)
     $("stat-peak-e").textContent = `${peakTotalE.toFixed(2)}`;
     $("stat-saturation").textContent = `${saturationPct.toFixed(2)}`;
     $("stat-fwhm").textContent = `${fwhmPix.toFixed(2)}`;
@@ -345,7 +519,7 @@
           mag,
           used_filter,
         );
-        updateChart(
+        updateExposureChart(
           out.R_star,
           out.R_sky,
           config.camera.dark_current_e_per_s,
@@ -353,6 +527,18 @@
           out.N_readout,
           out.t,
           snrVal,
+        );
+        // also update magnitude plot (use same exposure time)
+        updateMagChart(
+          out.t,
+          mag,
+          seeing,
+          binning,
+          parseFloat($("airmass").value),
+          Math.max(1, Math.min(5, parseInt($("air_quality").value))),
+          $("read_mode").value,
+          used_filter,
+          out.N_readout,
         );
       } else {
         console.error("No valid solution for exposure time");
@@ -375,7 +561,7 @@
           used_filter,
           out.snr_calc,
         );
-        updateChart(
+        updateExposureChart(
           out.R_star,
           out.R_sky,
           config.camera.dark_current_e_per_s,
@@ -383,6 +569,18 @@
           out.N_readout,
           snrVal,
           out.snr_calc,
+        );
+        // update magnitude plot using the provided exposure time input
+        updateMagChart(
+          snrVal,
+          mag,
+          seeing,
+          binning,
+          parseFloat($("airmass").value),
+          Math.max(1, Math.min(5, parseInt($("air_quality").value))),
+          $("read_mode").value,
+          used_filter,
+          out.N_readout,
         );
       } else {
         console.error("No valid SNR calculation");
@@ -406,6 +604,43 @@
       } else {
         console.error("calc-btn element not found");
       }
+      // Tab buttons for graphs
+      // attach per-button listeners
+      const tabButtons = document.querySelectorAll(".tab-button");
+      if (tabButtons && tabButtons.length) {
+        tabButtons.forEach((btn) => {
+          btn.addEventListener("click", (ev) => {
+            console.debug("Tab button clicked:", btn.dataset.target);
+            const target = btn.dataset.target;
+            document
+              .querySelectorAll(".tab-button")
+              .forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            document
+              .querySelectorAll(".tab-content")
+              .forEach((tc) => (tc.style.display = "none"));
+            const el = document.getElementById(target);
+            if (el) el.style.display = "block";
+          });
+        });
+      } else {
+        console.debug("No tab buttons found");
+      }
+      // delegated click handler as a robust fallback
+      document.addEventListener("click", (ev) => {
+        const b = ev.target.closest && ev.target.closest(".tab-button");
+        if (!b) return;
+        const target = b.dataset.target;
+        document
+          .querySelectorAll(".tab-button")
+          .forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((tc) => (tc.style.display = "none"));
+        const el = document.getElementById(target);
+        if (el) el.style.display = "block";
+      });
     } catch (error) {
       console.error("Error in DOMContentLoaded:", error);
     }

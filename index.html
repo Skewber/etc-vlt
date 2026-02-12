@@ -11,6 +11,9 @@
     <main class="container">
       <h1>Exposure Time Calculator</h1>
 
+      This is an experimental ETC for the vienna little telescope. Do NOT take
+      the results for ground truths!
+
       <form id="etc-form">
         <fieldset class="mode-select">
           <legend>Calculation mode</legend>
@@ -157,11 +160,36 @@
           </div>
         </div>
 
-        <div
-          id="chart-container"
-          style="position: relative; height: 400px; margin-top: 20px"
-        >
-          <canvas id="snr-chart"></canvas>
+        <!-- results no longer include inline chart (graphs moved to Graphs section) -->
+      </section>
+
+      <section id="graphs" class="results">
+        <div class="results-header">
+          <h2>Graphs</h2>
+          <div class="tab-buttons">
+            <button
+              type="button"
+              class="tab-button active"
+              data-target="tab-exposure"
+            >
+              Exposure vs SNR
+            </button>
+            <button type="button" class="tab-button" data-target="tab-mag">
+              Magnitude vs SNR
+            </button>
+          </div>
+        </div>
+        <div class="tab-contents">
+          <div id="tab-exposure" class="tab-content" style="display: block">
+            <div style="position: relative; height: 360px; margin-top: 8px">
+              <canvas id="snr-chart-tab"></canvas>
+            </div>
+          </div>
+          <div id="tab-mag" class="tab-content" style="display: none">
+            <div style="position: relative; height: 360px; margin-top: 8px">
+              <canvas id="mag-chart"></canvas>
+            </div>
+          </div>
         </div>
       </section>
       <footer>
